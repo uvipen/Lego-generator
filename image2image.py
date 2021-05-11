@@ -4,7 +4,6 @@
 import argparse
 import cv2
 import numpy as np
-from itertools import product
 from math import ceil
 
 
@@ -26,20 +25,22 @@ def main(opt):
     lego_brick[lego_brick > 233] = 100
 
     image = cv2.imread(opt.input, cv2.IMREAD_COLOR)
-    image = cv2.resize(image, (ceil(image.shape[1]/opt.stride)*opt.stride, ceil(image.shape[0]/opt.stride)*opt.stride))
+    nh, nw = ceil(image.shape[0] / opt.stride), ceil(image.shape[1] / opt.stride),
+    image = cv2.resize(image, (nw*opt.stride, nh*opt.stride))
     height, width, num_channels = image.shape
-    blank_image = np.zeros((height, width, 3), np.uint8)
-    for i, j in product(range(int(width / opt.stride)), range(int(height / opt.stride))):
-        partial_image = image[j * opt.stride: (j + 1) * opt.stride,
-                        i * opt.stride: (i + 1) * opt.stride, :]
-        avg_color = np.mean(np.mean(partial_image, axis=0), axis=0)
-        blank_image[j * opt.stride: (j + 1) * opt.stride, i * opt.stride: (i + 1) * opt.stride,
-        :] = np.clip(avg_color + lego_brick, 0, 255)
+    avg_colors = image.reshape(nh , opt.stride, nw, opt.stride, -1).swapaxes(1, 2).mean(axis=(2, 3))
+    avg_colors = avg_colors.reshape(nh, nw, 1, 1, num_channels)
+    lego_image = np.clip(avg_colors + lego_brick, 0, 255).astype(np.uint8)
+    lego_image = lego_image.swapaxes(1, 2).reshape(*image.shape)
+    # h,w,c -> nh,s,nw,s,c (reshape) -> nh,nw,s,s,c (swapaxes)
+    # -> nh,nw,c (mean) -> nh,nw,1,1,c (reshape) 
+    # -> nh,nw,s,s,c (broad-casting add with lego_brick)
+
     if opt.overlay_ratio:
-        height, width, _ = blank_image.shape
+        height, width, _ = lego_image.shape
         overlay = cv2.resize(image, (int(width * opt.overlay_ratio), int(height * opt.overlay_ratio)))
-        blank_image[height - int(height * opt.overlay_ratio):, width - int(width * opt.overlay_ratio):, :] = overlay
-    cv2.imwrite(opt.output, blank_image)
+        lego_image[height - int(height * opt.overlay_ratio):, width - int(width * opt.overlay_ratio):, :] = overlay
+    cv2.imwrite(opt.output, lego_image)
 
 
 if __name__ == '__main__':
