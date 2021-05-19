@@ -1,5 +1,7 @@
 # [PYTHON] Lego generator
 
+**New Idea**: Duplicate the lego piece and directly add it to the image, it will remove all the ugly part in spliting the image into piece like the original impl. I'll try it tomorrow
+
 ## Introduction
 
 Here is my python source code for Lego generator. To the best of my knowledge, my code is the shortest one you could find out for this goal. With my code, you could: 
